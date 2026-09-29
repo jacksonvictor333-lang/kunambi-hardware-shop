@@ -24,11 +24,109 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Authenticate User
+        |--------------------------------------------------------------------------
+        */
         $request->authenticate();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Regenerate Session
+        |--------------------------------------------------------------------------
+        */
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        /*
+        |--------------------------------------------------------------------------
+        | Get Authenticated User
+        |--------------------------------------------------------------------------
+        */
+        $user = Auth::guard('web')->user();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check User Status
+        |--------------------------------------------------------------------------
+        |
+        | Only active users are allowed to access the system.
+        |
+        */
+        if (!$user || $user->status !== 'active') {
+
+            Auth::guard('web')->logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()
+                ->withErrors([
+                    'email' => 'Your account has been deactivated. Please contact the administrator.',
+                ])
+                ->onlyInput('email');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Administrator
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('administrator')) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Manager
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('manager')) {
+            return redirect()->route('manager.dashboard');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sales Staff
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('sales_staff')) {
+            return redirect()->route('sales.dashboard');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Storekeeper
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('storekeeper')) {
+            return redirect()->route('inventory.dashboard');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Accountant
+        |--------------------------------------------------------------------------
+        */
+        if ($user->hasRole('accountant')) {
+            return redirect()->route('accountant.dashboard');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | User Has No Valid Role
+        |--------------------------------------------------------------------------
+        */
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return back()
+            ->withErrors([
+                'email' => 'Your account does not have a valid role. Please contact the administrator.',
+            ])
+            ->onlyInput('email');
     }
 
     /**

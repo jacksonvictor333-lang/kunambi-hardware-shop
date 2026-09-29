@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -12,6 +11,11 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\ExpenseController;
 
 
 /*
@@ -42,12 +46,48 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Dashboard
+    | Main Dashboard
     |--------------------------------------------------------------------------
     */
 
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Role Dashboards
+    |--------------------------------------------------------------------------
+    */
+
+    // Administrator Dashboard
+    Route::get('/admin/dashboard', function () {
+        return view('admin.dashboard');
+    })->name('admin.dashboard');
+
+
+    // Manager Dashboard
+    Route::get('/manager/dashboard', function () {
+        return view('manager.dashboard');
+    })->name('manager.dashboard');
+
+
+    // Sales Staff Dashboard
+    Route::get('/sales/dashboard', function () {
+        return view('sales.dashboard');
+    })->name('sales.dashboard');
+
+
+    // Storekeeper Dashboard
+    Route::get('/inventory/dashboard', function () {
+        return view('inventory.dashboard');
+    })->name('inventory.dashboard');
+
+
+    // Accountant Dashboard
+    Route::get('/accountant/dashboard', function () {
+        return view('accountant.dashboard');
+    })->name('accountant.dashboard');
 
 
     /*
@@ -194,6 +234,72 @@ Route::middleware(['auth'])->group(function () {
     // Export Reports to CSV
     Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])
         ->name('reports.export.csv');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Users Management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource('users', UserController::class)
+        ->except(['show']);
+
+
+    // Activate User
+    Route::patch('/users/{user}/activate', [UserController::class, 'activate'])
+        ->name('users.activate');
+
+
+    // Deactivate User
+    Route::patch('/users/{user}/deactivate', [UserController::class, 'deactivate'])
+        ->name('users.deactivate');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Roles Management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource('roles', RoleController::class)
+        ->except(['show']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Role Permissions
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        '/roles/{role}/permissions',
+        [RolePermissionController::class, 'edit']
+    )->name('roles.permissions.edit');
+
+    Route::put(
+        '/roles/{role}/permissions',
+        [RolePermissionController::class, 'update']
+    )->name('roles.permissions.update');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permissions Management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource('permissions', PermissionController::class)
+        ->except(['show']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Expenses
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource('expenses', ExpenseController::class);
 
 });
 

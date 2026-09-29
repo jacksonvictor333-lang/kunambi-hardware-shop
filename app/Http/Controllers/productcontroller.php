@@ -15,6 +15,11 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless(
+            auth()->user()?->hasPermission('view-products'),
+            403
+        );
+
         $query = Product::with([
             'category',
             'brand',
@@ -32,19 +37,29 @@ class ProductController extends Controller
 
         // Category filter
         if ($request->filled('category')) {
-            $query->where('category_id', $request->category);
+            $query->where(
+                'category_id',
+                $request->category
+            );
         }
 
         // Brand filter
         if ($request->filled('brand')) {
-            $query->where('brand_id', $request->brand);
+            $query->where(
+                'brand_id',
+                $request->brand
+            );
         }
 
         // Stock filter
         if ($request->filled('stock')) {
 
             if ($request->stock === 'out') {
-                $query->where('quantity', '<=', 0);
+                $query->where(
+                    'quantity',
+                    '<=',
+                    0
+                );
             }
 
             if ($request->stock === 'low') {
@@ -52,7 +67,11 @@ class ProductController extends Controller
                     'quantity',
                     '<=',
                     'minimum_stock'
-                )->where('quantity', '>', 0);
+                )->where(
+                    'quantity',
+                    '>',
+                    0
+                );
             }
 
             if ($request->stock === 'in') {
@@ -66,7 +85,10 @@ class ProductController extends Controller
 
         // Status filter
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where(
+                'status',
+                $request->status
+            );
         }
 
         $products = $query
@@ -74,19 +96,28 @@ class ProductController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $categories = Category::where('status', 'active')
+        $categories = Category::where(
+            'status',
+            'active'
+        )
             ->orderBy('name')
             ->get();
 
-        $brands = Brand::where('status', 'active')
+        $brands = Brand::where(
+            'status',
+            'active'
+        )
             ->orderBy('name')
             ->get();
 
-        return view('products.index', compact(
-            'products',
-            'categories',
-            'brands'
-        ));
+        return view(
+            'products.index',
+            compact(
+                'products',
+                'categories',
+                'brands'
+            )
+        );
     }
 
     /**
@@ -94,18 +125,32 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $categories = Category::where('status', 'active')
+        abort_unless(
+            auth()->user()?->hasPermission('create-products'),
+            403
+        );
+
+        $categories = Category::where(
+            'status',
+            'active'
+        )
             ->orderBy('name')
             ->get();
 
-        $brands = Brand::where('status', 'active')
+        $brands = Brand::where(
+            'status',
+            'active'
+        )
             ->orderBy('name')
             ->get();
 
-        return view('products.create', compact(
-            'categories',
-            'brands'
-        ));
+        return view(
+            'products.create',
+            compact(
+                'categories',
+                'brands'
+            )
+        );
     }
 
     /**
@@ -113,6 +158,11 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(
+            auth()->user()?->hasPermission('create-products'),
+            403
+        );
+
         $validated = $request->validate([
             'category_id' => [
                 'nullable',
@@ -196,6 +246,11 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
+        abort_unless(
+            auth()->user()?->hasPermission('view-products'),
+            403
+        );
+
         $product->load([
             'category',
             'brand',
@@ -212,11 +267,22 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        $categories = Category::where('status', 'active')
+        abort_unless(
+            auth()->user()?->hasPermission('edit-products'),
+            403
+        );
+
+        $categories = Category::where(
+            'status',
+            'active'
+        )
             ->orderBy('name')
             ->get();
 
-        $brands = Brand::where('status', 'active')
+        $brands = Brand::where(
+            'status',
+            'active'
+        )
             ->orderBy('name')
             ->get();
 
@@ -237,6 +303,11 @@ class ProductController extends Controller
         Request $request,
         Product $product
     ) {
+        abort_unless(
+            auth()->user()?->hasPermission('edit-products'),
+            403
+        );
+
         $validated = $request->validate([
             'category_id' => [
                 'nullable',
@@ -323,6 +394,11 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        abort_unless(
+            auth()->user()?->hasPermission('delete-products'),
+            403
+        );
+
         $product->delete();
 
         return redirect()
