@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Sales History')
@@ -226,13 +225,14 @@
                                         'cash' => 'bg-green-100 text-green-700',
                                         'credit' => 'bg-orange-100 text-orange-700',
                                         'card' => 'bg-blue-100 text-blue-700',
-                                        'mobile', 'mobile money' => 'bg-purple-100 text-purple-700',
+                                        'mobile', 'mobile money', 'mobile_money' => 'bg-purple-100 text-purple-700',
+                                        'bank' => 'bg-indigo-100 text-indigo-700',
                                         default => 'bg-slate-100 text-slate-700',
                                     };
                                 @endphp
 
                                 <span class="inline-flex rounded-lg px-3 py-1.5 text-xs font-semibold {{ $paymentClasses }}">
-                                    {{ ucfirst($sale->payment_method ?? 'Cash') }}
+                                    {{ ucfirst(str_replace('_', ' ', $sale->payment_method ?? 'Cash')) }}
                                 </span>
 
                             </td>
@@ -242,14 +242,14 @@
                             <td class="whitespace-nowrap px-6 py-4">
 
                                 <p class="font-bold text-slate-900">
-                                    TSh {{ number_format((float) $sale->total_amount, 0) }}
+                                    TSh {{ number_format((float) $sale->total, 0) }}
                                 </p>
 
-                                @if(isset($sale->balance_amount) && $sale->balance_amount > 0)
+                                @if((float) $sale->balance > 0)
 
                                     <p class="mt-1 text-xs font-medium text-orange-600">
                                         Balance:
-                                        TSh {{ number_format((float) $sale->balance_amount, 0) }}
+                                        TSh {{ number_format((float) $sale->balance, 0) }}
                                     </p>
 
                                 @endif

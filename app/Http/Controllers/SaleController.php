@@ -25,8 +25,6 @@ class SaleController extends Controller
 
         $customers = Customer::orderBy('name')->get();
 
-        // Namba ya invoice inayoonekana kwenye POS.
-        // Itatumika kwenye store() kama bado haijatumika.
         $invoiceNumber = $this->generateInvoiceNumber();
 
         return view('sales.pos', compact('products', 'customers', 'invoiceNumber'));
@@ -141,7 +139,6 @@ class SaleController extends Controller
                     throw new \RuntimeException('Sale total must be greater than zero.');
                 }
 
-                $changeAmount  = 0;
                 $balanceAmount = 0;
 
                 if ($paymentMethod === 'credit') {
@@ -157,8 +154,6 @@ class SaleController extends Controller
                     if ($paidAmount < $totalAmount) {
                         throw new \RuntimeException('Paid amount is less than the sale total.');
                     }
-
-                    $changeAmount = max(0, $paidAmount - $totalAmount);
                 }
 
                 // Tumia namba iliyoonekana kwenye POS kama bado ni huru,
@@ -173,11 +168,11 @@ class SaleController extends Controller
                     'user_id'        => auth()->id(),
                     'subtotal'       => $subtotal,
                     'discount'       => $discount,
-                    'total_amount'   => $totalAmount,
+                    'total'          => $totalAmount,   // column halisi: "total"
                     'paid_amount'    => $paidAmount,
-                    'change_amount'  => $changeAmount,
-                    'balance_amount' => $balanceAmount,
+                    'balance'        => $balanceAmount, // column halisi: "balance"
                     'payment_method' => $paymentMethod,
+                    'status'         => $balanceAmount > 0 ? 'pending' : 'completed',
                 ]);
 
                 foreach ($cartItems as $cartItem) {
@@ -190,7 +185,7 @@ class SaleController extends Controller
                         'product_id' => $product->id,
                         'quantity'   => $quantity,
                         'unit_price' => $cartItem['unit_price'],
-                        'subtotal'   => $cartItem['total'],   // column ya database ni "subtotal"
+                        'subtotal'   => $cartItem['total'],
                     ]);
 
                     $quantityBefore = $product->quantity;
@@ -220,14 +215,12 @@ class SaleController extends Controller
 
         } catch (\RuntimeException $e) {
 
-            // Business-rule problems: safe to show to the user.
             return back()
                 ->withInput()
                 ->withErrors(['sale' => $e->getMessage()]);
 
         } catch (\Throwable $e) {
 
-            // Unexpected problems: log the details, show a generic message.
             report($e);
 
             return back()
@@ -287,7 +280,6 @@ class SaleController extends Controller
 
     /**
      * DELETE / VOID SALE
-     * Restores the sold quantities back to stock.
      */
     public function destroy(Sale $sale)
     {
@@ -346,7 +338,6 @@ class SaleController extends Controller
 
     /**
      * GENERATE UNIQUE INVOICE NUMBER
-     * Format: INV-20260928-A1B2C3
      */
     private function generateInvoiceNumber(): string
     {

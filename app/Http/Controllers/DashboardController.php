@@ -5,47 +5,45 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Sale;
+use App\Models\SaleItem;
 
 class DashboardController extends Controller
 {
+    /**
+     * Kiwango cha "Low Stock" kinachotumika endapo bidhaa haina "minimum_stock" yake yenyewe.
+     */
+    private const DEFAULT_MIN_STOCK = 5;
+
     /**
      * Display the Hardware Shop Dashboard.
      */
     public function index()
     {
+        $now            = now();
+        $monthStart     = $now->copy()->startOfMonth();
+        $lastMonthStart = $now->copy()->subMonthNoOverflow()->startOfMonth();
+        $lastMonthEnd   = $lastMonthStart->copy()->endOfMonth();
+
         /*
         |--------------------------------------------------------------------------
         | Product Statistics
         |--------------------------------------------------------------------------
         */
 
-        // Total products
-        $totalProducts = Product::count();
-
-        // Active products
-        $activeProducts = Product::where('status', 'active')->count();
-
-        // Inactive products
+        $totalProducts    = Product::count();
+        $activeProducts   = Product::where('status', 'active')->count();
         $inactiveProducts = Product::where('status', 'inactive')->count();
+        $totalStock       = (int) Product::sum('quantity');
 
-        // Total quantity available in stock
-        $totalStock = Product::sum('quantity');
+        // "Bidhaa hazina 'minimum_stock' yake" zinatumia kiwango cha kudumu (COALESCE),
+        // vinginevyo zisingewahi kuonekana kwenye Low Stock hata kama stock yake ni ndogo.
+        $lowStockBase = fn () => Product::where('quantity', '>', 0)
+            ->whereRaw('quantity <= COALESCE(minimum_stock, ?)', [self::DEFAULT_MIN_STOCK]);
 
-        // Low stock products
-        $lowStockProducts = Product::whereColumn(
-            'quantity',
-            '<=',
-            'minimum_stock'
-        )
-        ->where('quantity', '>', 0)
-        ->count();
+        $outOfStockBase = fn () => Product::where('quantity', '<=', 0);
 
-        // Out of stock products
-        $outOfStockProducts = Product::where(
-            'quantity',
-            '<=',
-            0
-        )->count();
+        $lowStockProducts   = $lowStockBase()->count();
+        $outOfStockProducts = $outOfStockBase()->count();
 
 
         /*
@@ -59,196 +57,142 @@ class DashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Sales Statistics
+        | Sales Statistics (query moja badala ya 9)
         |--------------------------------------------------------------------------
         */
 
-        // Total number of sales
-        $totalSales = Sale::count();
+        $agg = Sale::selectRaw(
+            "COUNT(*) as total_sales,
+             COALESCE(SUM(total), 0)        as total_revenue,
+             COALESCE(SUM(paid_amount), 0)  as total_paid,
+             COALESCE(SUM(balance), 0)      as total_balance,
+             COALESCE(SUM(discount), 0)     as total_discount,
+             COUNT(CASE WHEN DATE(created_at) = ? THEN 1 END) as today_sales,
+             COALESCE(SUM(CASE WHEN DATE(created_at) = ? THEN total ELSE 0 END), 0) as today_revenue,
+             COUNT(CASE WHEN created_at >= ? THEN 1 END) as monthly_sales,
+             COALESCE(SUM(CASE WHEN created_at >= ? THEN total ELSE 0 END), 0) as monthly_revenue",
+            [$now->toDateString(), $now->toDateString(), $monthStart, $monthStart]
+        )->first();
 
-        // Total revenue
-        // Database column is "total"
-        $totalRevenue = Sale::sum('total');
+        $totalSales     = (int) $agg->total_sales;
+        $totalRevenue   = (float) $agg->total_revenue;
+        $totalPaid      = (float) $agg->total_paid;
+        $totalBalance   = (float) $agg->total_balance;
+        $totalDiscount  = (float) $agg->total_discount;
 
-        // Total amount paid
-        $totalPaid = Sale::sum('paid_amount');
+        $todaySales     = (int) $agg->today_sales;
+        $todayRevenue   = (float) $agg->today_revenue;
 
-        // Total outstanding balance
-        // Database column is "balance"
-        $totalBalance = Sale::sum('balance');
+        $monthlySales   = (int) $agg->monthly_sales;
+        $monthlyRevenue = (float) $agg->monthly_revenue;
 
-        // Total discount given
-        $totalDiscount = Sale::sum('discount');
+        // Ziada: wastani wa mauzo, na ukuaji wa mapato dhidi ya mwezi uliopita.
+        $averageSaleValue = $totalSales > 0 ? $totalRevenue / $totalSales : 0;
+
+        $lastMonthRevenue = (float) Sale::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->sum('total');
+        $revenueGrowth    = $this->percentChange($monthlyRevenue, $lastMonthRevenue);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Today's Sales
+        | Recent Sales / Recent Products
         |--------------------------------------------------------------------------
         */
 
-        $todaySales = Sale::whereDate(
-            'created_at',
-            today()
-        )->count();
+        $recentSales = Sale::with(['customer:id,name,phone', 'user:id,name'])
+            ->latest()
+            ->take(5)
+            ->get();
 
-        // Today's revenue
-        $todayRevenue = Sale::whereDate(
-            'created_at',
-            today()
-        )->sum('total');
+        $recentProducts = Product::latest()->take(5)->get();
 
 
         /*
         |--------------------------------------------------------------------------
-        | This Month's Sales
+        | Low / Out of Stock Lists (kichujio kinafanana na namba hapo juu)
         |--------------------------------------------------------------------------
         */
 
-        $monthlySales = Sale::whereMonth(
-            'created_at',
-            now()->month
-        )
-        ->whereYear(
-            'created_at',
-            now()->year
-        )
-        ->count();
+        $lowStockList = $lowStockBase()
+            ->select(['id', 'name', 'sku', 'quantity', 'minimum_stock', 'unit'])
+            ->orderBy('quantity')
+            ->orderBy('name')
+            ->take(5)
+            ->get();
 
-        // This month's revenue
-        $monthlyRevenue = Sale::whereMonth(
-            'created_at',
-            now()->month
-        )
-        ->whereYear(
-            'created_at',
-            now()->year
-        )
-        ->sum('total');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Recent Sales
-        |--------------------------------------------------------------------------
-        */
-
-        $recentSales = Sale::with([
-            'customer',
-            'user'
-        ])
-        ->latest()
-        ->take(5)
-        ->get();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Recent Products
-        |--------------------------------------------------------------------------
-        */
-
-        $recentProducts = Product::latest()
+        $outOfStockList = $outOfStockBase()
+            ->select(['id', 'name', 'sku'])
+            ->orderBy('name')
             ->take(5)
             ->get();
 
 
         /*
         |--------------------------------------------------------------------------
-        | Low Stock Product List
+        | Top Products kwa Stock (bidhaa zenye idadi kubwa zaidi ghalani)
         |--------------------------------------------------------------------------
         */
 
-        $lowStockList = Product::whereColumn(
-            'quantity',
-            '<=',
-            'minimum_stock'
-        )
-        ->orderBy('quantity')
-        ->take(5)
-        ->get();
+        $topProducts = Product::orderByDesc('quantity')->take(5)->get();
 
 
         /*
         |--------------------------------------------------------------------------
-        | Out of Stock Product List
+        | Best Selling Products (ziada: bidhaa zinazouzwa zaidi mwezi huu)
         |--------------------------------------------------------------------------
         */
 
-        $outOfStockList = Product::where(
-            'quantity',
-            '<=',
-            0
-        )
-        ->orderBy('name')
-        ->take(5)
-        ->get();
+        $bestSellingProducts = SaleItem::selectRaw('product_id, SUM(quantity) as qty_sold, SUM(subtotal) as revenue')
+            ->whereHas('sale', fn ($q) => $q->where('created_at', '>=', $monthStart))
+            ->groupBy('product_id')
+            ->orderByDesc('qty_sold')
+            ->with('product:id,name,unit')
+            ->take(5)
+            ->get();
 
 
         /*
         |--------------------------------------------------------------------------
-        | Top Products
+        | Sales by Payment Method (query moja badala ya 4)
         |--------------------------------------------------------------------------
         */
 
-        $topProducts = Product::orderByDesc(
-            'quantity'
-        )
-        ->take(5)
-        ->get();
+        $payments = Sale::selectRaw('payment_method, SUM(total) as total')
+            ->groupBy('payment_method')
+            ->pluck('total', 'payment_method');
+
+        $cashSales        = (float) ($payments['cash'] ?? 0);
+        $mobileMoneySales = (float) ($payments['mobile_money'] ?? 0);
+        $bankSales        = (float) ($payments['bank'] ?? 0);
+        $creditSales      = (float) ($payments['credit'] ?? 0);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Sales by Payment Method
+        | Sales Chart - Last 7 Days (query moja badala ya 14)
         |--------------------------------------------------------------------------
         */
 
-        $cashSales = Sale::where(
-            'payment_method',
-            'cash'
-        )->sum('total');
+        $chartStart = $now->copy()->subDays(6)->startOfDay();
 
-        $mobileMoneySales = Sale::where(
-            'payment_method',
-            'mobile_money'
-        )->sum('total');
-
-        $bankSales = Sale::where(
-            'payment_method',
-            'bank'
-        )->sum('total');
-
-        $creditSales = Sale::where(
-            'payment_method',
-            'credit'
-        )->sum('total');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Sales Chart - Last 7 Days
-        |--------------------------------------------------------------------------
-        */
+        $rows = Sale::selectRaw('DATE(created_at) as d, COUNT(*) as cnt, SUM(total) as total')
+            ->where('created_at', '>=', $chartStart)
+            ->groupBy('d')
+            ->get()
+            ->keyBy('d');
 
         $salesChart = [];
 
         for ($i = 6; $i >= 0; $i--) {
 
-            $date = now()->subDays($i);
+            $date = $now->copy()->subDays($i);
+            $key  = $date->toDateString();
+            $row  = $rows->get($key);
 
             $salesChart[] = [
-                'date' => $date->format('M d'),
-
-                'sales' => Sale::whereDate(
-                    'created_at',
-                    $date->toDateString()
-                )->count(),
-
-                'revenue' => Sale::whereDate(
-                    'created_at',
-                    $date->toDateString()
-                )->sum('total'),
+                'date'    => $date->format('M d'),
+                'sales'   => (int) ($row->cnt ?? 0),
+                'revenue' => (float) ($row->total ?? 0),
             ];
         }
 
@@ -278,6 +222,8 @@ class DashboardController extends Controller
             'totalPaid',
             'totalBalance',
             'totalDiscount',
+            'averageSaleValue',
+            'revenueGrowth',
 
             // Today
             'todaySales',
@@ -293,6 +239,7 @@ class DashboardController extends Controller
             'lowStockList',
             'outOfStockList',
             'topProducts',
+            'bestSellingProducts',
 
             // Payment methods
             'cashSales',
@@ -303,5 +250,18 @@ class DashboardController extends Controller
             // Chart
             'salesChart'
         ));
+    }
+
+    /**
+     * Asilimia ya mabadiliko kati ya thamani mbili. Inarudisha null kama hapakuwa
+     * na kitu cha kulinganisha (mwezi uliopita hakuna mauzo kabisa).
+     */
+    private function percentChange(float $current, float $previous): ?float
+    {
+        if ($previous <= 0) {
+            return $current > 0 ? null : 0.0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 }

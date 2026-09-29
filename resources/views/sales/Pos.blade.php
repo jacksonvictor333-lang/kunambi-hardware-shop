@@ -439,9 +439,9 @@
             </template>
 
             <input type="hidden" name="subtotal" :value="subtotal">
-            <input type="hidden" name="total_amount" :value="total">
-            <input type="hidden" name="change_amount" :value="change">
-            <input type="hidden" name="balance_amount" :value="balance">
+            <input type="hidden" name="display_total" :value="total">
+            <input type="hidden" name="display_change" :value="change">
+            <input type="hidden" name="display_balance" :value="balance">
         </div>
     </form>
 </div>
