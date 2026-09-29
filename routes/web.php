@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -185,8 +186,14 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
+    // Reports Dashboard
     Route::get('/reports', [ReportController::class, 'index'])
         ->name('reports.index');
+
+
+    // Export Reports to CSV
+    Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])
+        ->name('reports.export.csv');
 
 });
 

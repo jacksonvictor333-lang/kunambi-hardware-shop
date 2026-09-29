@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>Login - KUNAMBI HARDWARE SHOP</title>
+    <title>Login - KUNAMBI HARDWARE STORE</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -113,7 +113,7 @@
 
                 <div class="leading-tight">
                     <p class="text-sm font-semibold text-green-100/90">KUNAMBI</p>
-                    <p class="text-xs font-medium tracking-[.18em] text-white/70">HARDWARE SHOP</p>
+                    <p class="text-xs font-medium tracking-[.18em] text-white/70">HARDWARE STORE</p>
                 </div>
             </div>
 
@@ -131,7 +131,8 @@
                 <h1 class="leading-none tracking-tight text-white drop-shadow-lg">
                     <span class="block text-6xl font-black xl:text-7xl">KUNAMBI</span>
                     <span class="mt-3 block text-3xl font-bold tracking-[.12em] text-green-100 xl:text-4xl">
-                        HARDWARE SHOP
+                        HARDWARE STORE
+
                     </span>
                 </h1>
 
@@ -159,7 +160,7 @@
 
                 <p class="text-right text-xs text-green-100/60">
                     © {{ date('Y') }}<br>
-                    KUNAMBI HARDWARE SHOP
+                    KUNAMBI HARDWARE STORE
                 </p>
             </div>
 
@@ -189,7 +190,7 @@
 
                     <div class="leading-tight">
                         <span class="block text-xl font-black text-white">KUNAMBI</span>
-                        <span class="block text-xs font-bold tracking-[.15em] text-green-100">HARDWARE SHOP</span>
+                        <span class="block text-xs font-bold tracking-[.15em] text-green-100">HARDWARE STORE</span>
                     </div>
                 </div>
             </div>
@@ -208,9 +209,10 @@
                     <h2 class="text-3xl font-extrabold tracking-tight text-slate-900">Welcome back</h2>
 
                     <p class="mt-2 text-sm leading-6 text-slate-500">
-                        Sign in to access your
-                        <span class="font-semibold text-green-600">KUNAMBI</span>
-                        Hardware Management System.
+                        Sign In to your account
+ </p>
+                     <p class="mt-2 text-sm leading-6 text-slate-500">   
+                    Enter your credentials below
                     </p>
                 </div>
 
@@ -356,7 +358,7 @@
 
             {{-- Mobile copyright --}}
             <p class="mt-6 text-center text-xs text-slate-400 lg:hidden">
-                © {{ date('Y') }} KUNAMBI HARDWARE SHOP. All rights reserved.
+                © {{ date('Y') }} KUNAMBI HARDWARE STORE. All rights reserved.
             </p>
 
         </div>
